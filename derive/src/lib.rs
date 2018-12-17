@@ -29,6 +29,7 @@ use syn::{DeriveInput, Generics, GenericParam, Ident};
 
 mod decode;
 mod encode;
+mod encode_metadata;
 mod utils;
 
 const ENCODE_ERR: &str = "derive(Encode) failed";
@@ -45,10 +46,17 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
 	let dest_ = quote!(dest);
 	let encoding = encode::quote(&input.data, name, &self_, &dest_);
 
+	let dest2_ = quote!(dest);
+	let metadata = encode_metadata::quote(&input.data, name, &dest2_);
+
 	let impl_block = quote! {
 		impl #impl_generics _parity_codec::Encode for #name #ty_generics #where_clause {
 			fn encode_to<EncOut: _parity_codec::Output>(&#self_, #dest_: &mut EncOut) {
 				#encoding
+			}
+
+			fn metadata_to<EncOut: _parity_codec::Output>(#dest2_: &mut EncOut) {
+				#metadata
 			}
 		}
 	};

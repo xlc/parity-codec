@@ -120,6 +120,8 @@ fn should_work_for_simple_enum() {
 	assert_eq!(EnumType::decode(&mut dc), Some(c));
 	let mut dz: &[u8] = &[0];
 	assert_eq!(EnumType::decode(&mut dz), None);
+
+	println!(String::from_utf8(EnumType::metadata()));
 }
 
 #[test]

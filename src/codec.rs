@@ -120,6 +120,17 @@ pub trait Encode {
 	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 		f(&self.encode())
 	}
+
+	fn metadata_to<T: Output>(dest: &mut T) {
+		// dest.write(&Self::metadata())
+		dest.write("unknown".as_bytes())
+	}
+
+	fn metadata() -> Vec<u8> {
+		let mut r = Vec::new();
+		Self::metadata_to(&mut r);
+		r
+	}
 }
 
 /// Trait that allows zero-copy read of value-references from slices in LE format.
