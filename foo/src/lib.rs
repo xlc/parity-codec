@@ -28,3 +28,16 @@ enum EnumType {
 		d: u64,
 	},
 }
+
+
+#[derive(Encode)]
+struct StructType {
+	a: u32,
+	b: EnumType
+}
+
+#[test]
+fn test() {
+	println!("{:#?}", EnumType::metadata());
+	println!("{:#?}", StructType::metadata());
+}

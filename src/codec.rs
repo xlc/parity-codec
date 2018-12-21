@@ -101,6 +101,38 @@ impl<W: ::std::io::Write> Output for W {
 	}
 }
 
+#[derive(Debug)]
+pub enum FieldName {
+	Unnamed(u32),
+	Named(&'static str),
+}
+
+#[derive(Debug)]
+pub struct FieldMetadata {
+	pub name: FieldName,
+	pub ty: Metadata
+}
+
+#[derive(Debug)]
+pub struct EnumVariantMetadata {
+	pub name: &'static str,
+	pub variants: Vec<FieldMetadata>
+}
+
+#[derive(Debug)]
+pub enum TypeMetadata {
+	Primative,
+	Array(Box<TypeMetadata>),
+	Struct(Vec<FieldMetadata>),
+	Enum(Vec<EnumVariantMetadata>),
+}
+
+#[derive(Debug)]
+pub struct Metadata {
+	pub name: &'static str,
+	pub kind: TypeMetadata
+}
+
 /// Trait that allows zero-copy write of value-references to slices in LE format.
 /// Implementations should override `using_encoded` for value types and `encode_to` for allocating types.
 pub trait Encode {
@@ -121,15 +153,11 @@ pub trait Encode {
 		f(&self.encode())
 	}
 
-	fn metadata_to<T: Output>(dest: &mut T) {
-		// dest.write(&Self::metadata())
-		dest.write("unknown".as_bytes())
-	}
-
-	fn metadata() -> Vec<u8> {
-		let mut r = Vec::new();
-		Self::metadata_to(&mut r);
-		r
+	fn metadata() -> Metadata {
+		Metadata {
+			name: "Unknown",
+			kind: TypeMetadata::Primative
+		}
 	}
 }
 

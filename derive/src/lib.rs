@@ -46,8 +46,7 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
 	let dest_ = quote!(dest);
 	let encoding = encode::quote(&input.data, name, &self_, &dest_);
 
-	let dest2_ = quote!(dest);
-	let metadata = encode_metadata::quote(&input.data, name, &dest2_);
+	let metadata = encode_metadata::quote(&input.data, name);
 
 	let impl_block = quote! {
 		impl #impl_generics _parity_codec::Encode for #name #ty_generics #where_clause {
@@ -55,7 +54,7 @@ pub fn encode_derive(input: TokenStream) -> TokenStream {
 				#encoding
 			}
 
-			fn metadata_to<EncOut: _parity_codec::Output>(#dest2_: &mut EncOut) {
+			fn metadata() -> _parity_codec::Metadata {
 				#metadata
 			}
 		}

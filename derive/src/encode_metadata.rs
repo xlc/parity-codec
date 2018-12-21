@@ -12,118 +12,128 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::str::from_utf8;
-
 use proc_macro2::{Span, TokenStream};
 use syn::{
-	Data, Field, Fields, Ident, Index, Type,
+	Data, Field, Fields, Ident, Type,
 	punctuated::Punctuated,
 	spanned::Spanned,
 	token::Comma,
 };
-use utils;
 
 type FieldsList = Punctuated<Field, Comma>;
 
 fn encode_fields(
-	dest: &TokenStream,
 	fields: &FieldsList,
 ) -> TokenStream
 {
 	let recurse = fields.iter().enumerate().map(|(i, f)| {
-		let name = f.ident.as_ref().map(|iden| iden.to_string()).unwrap_or(i.to_string());
-		// let ty = format!("{:?}", f.ty);
+		let name = f.ident.as_ref().map(|iden| quote! {
+			_parity_codec::FieldName::Named(stringify!(#iden))
+		})
+		.unwrap_or(quote! {
+			_parity_codec::FieldName::Unnamed(#i as u32)
+		});
+		let ty = &f.ty;
 		quote_spanned! { f.span() =>
-			// #dest.push(b"\"");
-			#dest.push(#name.as_bytes());
-			// #dest.push(b"\" : ");
-			// #dest.push(#ty)
-			// #dest.push(b"\n");
+			_parity_codec::FieldMetadata {
+				name: #name,
+				ty: #ty::metadata()
+			}
 		}
 	});
 
 	quote! {
-		#( #recurse )*
+		_parity_codec::TypeMetadata::Struct(vec![#( #recurse, )*])
 	}
-	// quote! {
-	// 	#dest.push(b"\" : ");
-	// }
 }
 
-pub fn quote(data: &Data, type_name: &Ident, dest: &TokenStream) -> TokenStream {
+pub fn quote(data: &Data, type_name: &Ident) -> TokenStream {
 	let call_site = Span::call_site();
 	let res = match *data {
 		Data::Struct(ref data) => {
 			match data.fields {
 				Fields::Named(ref fields) => encode_fields(
-					dest,
 					&fields.named,
 				),
 				Fields::Unnamed(ref fields) => encode_fields(
-					dest,
 					&fields.unnamed,
 				),
 				Fields::Unit => quote_spanned! { call_site =>
-					drop(#dest);
+					_parity_codec::TypeMetadata::Struct(vec![])
 				},
 			}
 		},
 		Data::Enum(ref data) => {
 			let recurse = data.variants.iter().enumerate().map(|(i, f)| {
 				let name = &f.ident;
-				let index = utils::index(f, i);
 				match f.fields {
 					Fields::Named(ref fields) => {
-						let field_name = |_, ident: &Option<Ident>, ty: &Type| quote_spanned!(call_site => #ident #ty);
-						let names = fields.named
+						let field_name = |ty: &Type| {
+							quote_spanned!(call_site => #ty)
+						};
+						let fields = fields.named
 							.iter()
-							.enumerate()
-							.map(|(i, f)| field_name(i, &f.ident, &f.ty));
+							.map(|f| {
+								let ty = field_name(&f.ty);
+								let name = &f.ident;
+								quote_spanned! { f.span() =>
+									_parity_codec::FieldMetadata {
+										name: _parity_codec::FieldName::Named(stringify!(#name)),
+										ty: #ty::metadata()
+									}
+								}
+							});
 
 						quote_spanned! { f.span() =>
-							let test = stringify!(#type_name :: #name);
-							let vec = vec!(#( stringify!(#names), )*);
+							_parity_codec::EnumVariantMetadata {
+								name: stringify!(#name),
+								variants: vec![#( #fields, )*]
+							}
 						}
 					},
 					Fields::Unnamed(ref fields) => {
-						let field_name = |i, ty: &Type| {
-							quote_spanned!(call_site => #i #ty)
+						let field_name = |ty: &Type| {
+							quote_spanned!(call_site => #ty)
 						};
-						let names = fields.unnamed
+						let fields = fields.unnamed
 							.iter()
+							.map(|f| field_name(&f.ty))
 							.enumerate()
-							.map(|(i, f)| field_name(i, &f.ty));
+							.map(|(i, ty)| quote! {
+								_parity_codec::FieldMetadata {
+									name: _parity_codec::FieldName::Unnamed(#i as u32),
+									ty: #ty::metadata()
+								}
+							});
 
 						quote_spanned! { f.span() =>
-							let test = stringify!(#type_name :: #name);
-							let vec = vec!(#( stringify!(#names), )*);
+							_parity_codec::EnumVariantMetadata {
+								name: stringify!(#name),
+								variants: vec![#( #fields, )*]
+							}
 						}
 					},
 					Fields::Unit => {
 						quote_spanned! { f.span() =>
-							let test = stringify!(#type_name :: #name);
+							_parity_codec::EnumVariantMetadata {
+								name: stringify!(#name),
+								variants: Vec::new()
+							}
 						}
 					},
 				}
 			});
 
 			quote! {
-				#( #recurse )*
+				_parity_codec::TypeMetadata::Enum(vec![#( #recurse, )*])
 			}
 		},
 		Data::Union(_) => panic!("Union types are not supported."),
 	};
 	quote! {
-		#dest.push(stringify!(#type_name));
-		#res
+		_parity_codec::Metadata {
+			name: stringify!(#type_name),
+			kind: #res
+		}
 	}
-}
-pub fn stringify(id: u8) -> [u8; 2] {
-	const CHARS: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
-	let len = CHARS.len() as u8;
-	let symbol = |id: u8| CHARS[(id % len) as usize];
-	let a = symbol(id);
-	let b = symbol(id / len);
-
-	[a, b]
 }

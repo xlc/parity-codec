@@ -53,13 +53,73 @@ const _IMPL_ENCODE_FOR_EnumType: () = {
                 }
             }
         }
-        fn metadata_to<EncOut: _parity_codec::Output>(dest: &mut EncOut) {
-            dest.push("EnumType");
-            let test = "EnumType :: A";
-            let test = "EnumType :: B";
-            let vec = <[_]>::into_vec(box ["0usize u32", "1usize u64"]);
-            let test = "EnumType :: C";
-            let vec = <[_]>::into_vec(box ["c u32", "d u64"]);
+        fn metadata() -> _parity_codec::Metadata {
+            _parity_codec::Metadata {
+                name: "EnumType",
+                kind: _parity_codec::TypeMetadata::Enum(<[_]>::into_vec(box [
+                    _parity_codec::EnumVariantMetadata {
+                        name: "A",
+                        variants: Vec::new(),
+                    },
+                    _parity_codec::EnumVariantMetadata {
+                        name: "B",
+                        variants: <[_]>::into_vec(box [
+                            _parity_codec::FieldMetadata {
+                                name: _parity_codec::FieldName::Unnamed(0usize as u32),
+                                ty: u32::metadata(),
+                            },
+                            _parity_codec::FieldMetadata {
+                                name: _parity_codec::FieldName::Unnamed(1usize as u32),
+                                ty: u64::metadata(),
+                            },
+                        ]),
+                    },
+                    _parity_codec::EnumVariantMetadata {
+                        name: "C",
+                        variants: <[_]>::into_vec(box [
+                            _parity_codec::FieldMetadata {
+                                name: _parity_codec::FieldName::Named("c"),
+                                ty: u32::metadata(),
+                            },
+                            _parity_codec::FieldMetadata {
+                                name: _parity_codec::FieldName::Named("d"),
+                                ty: u64::metadata(),
+                            },
+                        ]),
+                    },
+                ])),
+            }
+        }
+    }
+};
+struct StructType {
+    a: u32,
+    b: EnumType,
+}
+#[allow(non_upper_case_globals, unused_attributes, unused_qualifications)]
+const _IMPL_ENCODE_FOR_StructType: () = {
+    #[allow(unknown_lints)]
+    #[allow(rust_2018_idioms)]
+    extern crate parity_codec as _parity_codec;
+    impl _parity_codec::Encode for StructType {
+        fn encode_to<EncOut: _parity_codec::Output>(&self, dest: &mut EncOut) {
+            dest.push(&self.a);
+            dest.push(&self.b);
+        }
+        fn metadata() -> _parity_codec::Metadata {
+            _parity_codec::Metadata {
+                name: "StructType",
+                kind: _parity_codec::TypeMetadata::Struct(<[_]>::into_vec(box [
+                    _parity_codec::FieldMetadata {
+                        name: _parity_codec::FieldName::Named("a"),
+                        ty: u32::metadata(),
+                    },
+                    _parity_codec::FieldMetadata {
+                        name: _parity_codec::FieldName::Named("b"),
+                        ty: EnumType::metadata(),
+                    },
+                ])),
+            }
         }
     }
 };
